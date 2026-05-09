@@ -1,0 +1,9 @@
+[project]
+name = "hw2-cv"
+version = "0.1.0"
+description = "Computer vision homework: pet classification, VisDrone tracking, and U-Net segmentation."
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

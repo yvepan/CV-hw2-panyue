@@ -1,0 +1,21 @@
+﻿run_name: resnet18_random_init
+seed: 42
+data_root: datasets/oxford_pet
+output_dir: results/task1/resnet18_random_init
+model:
+  name: resnet18
+  pretrained: false
+  attention: none
+train:
+  image_size: 224
+  batch_size: 32
+  epochs: 20
+  num_workers: 4
+  base_lr: 0.001
+  head_lr: 0.001
+  weight_decay: 0.0001
+  freeze_backbone_epochs: 0
+  label_smoothing: 0.05
+  amp: true
+
+

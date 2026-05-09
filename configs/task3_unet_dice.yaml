@@ -1,0 +1,15 @@
+﻿run_name: unet_dice
+seed: 42
+data_root: datasets/oxford_pet
+output_dir: results/task3/unet_dice
+loss: dice
+train:
+  image_size: 192
+  batch_size: 16
+  epochs: 30
+  num_workers: 4
+  lr: 0.001
+  weight_decay: 0.0001
+  amp: true
+
+

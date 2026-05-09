@@ -1,0 +1,21 @@
+﻿run_name: resnet18_imagenet
+seed: 42
+data_root: datasets/oxford_pet
+output_dir: results/task1/resnet18_imagenet
+model:
+  name: resnet18
+  pretrained: true
+  attention: none
+train:
+  image_size: 224
+  batch_size: 32
+  epochs: 20
+  num_workers: 4
+  base_lr: 0.0001
+  head_lr: 0.001
+  weight_decay: 0.0001
+  freeze_backbone_epochs: 2
+  label_smoothing: 0.05
+  amp: true
+
+

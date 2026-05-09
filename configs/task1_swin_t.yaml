@@ -1,0 +1,21 @@
+﻿run_name: swin_t_imagenet
+seed: 42
+data_root: datasets/oxford_pet
+output_dir: results/task1/swin_t_imagenet
+model:
+  name: swin_t
+  pretrained: true
+  attention: none
+train:
+  image_size: 224
+  batch_size: 16
+  epochs: 20
+  num_workers: 4
+  base_lr: 0.00005
+  head_lr: 0.0005
+  weight_decay: 0.05
+  freeze_backbone_epochs: 1
+  label_smoothing: 0.1
+  amp: true
+
+

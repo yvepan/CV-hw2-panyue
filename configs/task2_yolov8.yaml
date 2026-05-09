@@ -1,0 +1,16 @@
+﻿run_name: visdrone_yolov8
+data_yaml: datasets/visdrone_yolo/visdrone.yaml
+output_dir: results/task2
+model: yolov8n.pt
+epochs: 50
+imgsz: 640
+batch: 16
+device: 0
+workers: 4
+patience: 15
+optimizer: AdamW
+lr0: 0.001
+weight_decay: 0.0005
+
+
+
