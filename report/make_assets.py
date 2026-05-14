@@ -7,6 +7,8 @@ from pathlib import Path
 import cv2
 import matplotlib.pyplot as plt
 import shutil
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path('.')
 ASSETS = ROOT / 'report' / 'assets'
@@ -97,6 +99,124 @@ def extract_tracking_frames() -> None:
     cap.release()
 
 
+def make_counting_line_example() -> None:
+    src = ASSETS / 'task2_frame_250.jpg'
+    if src.exists():
+        shutil.copy2(src, ASSETS / 'task2_counting_line_example.jpg')
+
+
+def make_id_switch_assets() -> None:
+    tracks_path = ROOT / 'results/task2/tracking_final/tracks.csv'
+    if not tracks_path.exists():
+        return
+    rows = read_csv(tracks_path)
+    by_key = {(int(r['frame']), int(r['track_id'])): r for r in rows}
+    font = ImageFont.load_default()
+
+    def draw_pair(old_id: int, new_id: int) -> Path:
+        panels = []
+        for frame, track_id, label in [
+            (252, old_id, f'old ID: {old_id}'),
+            (253, new_id, f'new ID: {new_id}'),
+        ]:
+            img_path = ASSETS / f'task2_frame_{frame}.jpg'
+            if not img_path.exists() or (frame, track_id) not in by_key:
+                continue
+            img = Image.open(img_path).convert('RGB')
+            r = by_key[(frame, track_id)]
+            x1, y1, x2, y2 = [float(r[k]) for k in ('x1', 'y1', 'x2', 'y2')]
+            cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+            pad = 90
+            w, h = img.size
+            crop = (max(0, int(cx - pad)), max(0, int(cy - pad)), min(w, int(cx + pad)), min(h, int(cy + pad)))
+            panel = img.crop(crop).resize((320, 320))
+            sx = 320 / (crop[2] - crop[0])
+            sy = 320 / (crop[3] - crop[1])
+            box = [(x1 - crop[0]) * sx, (y1 - crop[1]) * sy, (x2 - crop[0]) * sx, (y2 - crop[1]) * sy]
+            d = ImageDraw.Draw(panel)
+            for offset in range(4):
+                d.rectangle([box[0] - offset, box[1] - offset, box[2] + offset, box[3] + offset], outline=(255, 0, 0))
+            d.rectangle([8, 8, 235, 42], fill=(0, 0, 0))
+            d.text((14, 17), f'frame {frame} | {label}', fill=(255, 255, 255), font=font)
+            panels.append(panel)
+
+        out = ASSETS / f'task2_id_switch_{old_id}_{new_id}.png'
+        if len(panels) != 2:
+            return out
+        canvas = Image.new('RGB', (680, 380), (255, 255, 255))
+        canvas.paste(panels[0], (20, 44))
+        canvas.paste(panels[1], (340, 44))
+        d = ImageDraw.Draw(canvas)
+        d.text((20, 14), f'Possible ID switch: {old_id} -> {new_id}', fill=(0, 0, 0), font=font)
+        d.line((325, 194, 335, 194), fill=(220, 0, 0), width=4)
+        d.polygon([(335, 194), (323, 186), (323, 202)], fill=(220, 0, 0))
+        d.text((218, 344), 'same nearby object, changed tracking ID', fill=(180, 0, 0), font=font)
+        canvas.save(out)
+        return out
+
+    outputs = [draw_pair(3479, 2416), draw_pair(3803, 3549)]
+    summary = Image.new('RGB', (720, 820), (255, 255, 255))
+    d = ImageDraw.Draw(summary)
+    d.text((20, 16), 'Task 2 ID-switch local evidence: frame 252 -> 253', fill=(0, 0, 0), font=font)
+    y = 48
+    for path in outputs:
+        if path.exists():
+            im = Image.open(path).convert('RGB')
+            summary.paste(im, (20, y))
+            y += 390
+    summary.save(ASSETS / 'task2_id_switch_summary.png')
+
+
+def make_task3_segmentation_comparison() -> None:
+    data_dir = ROOT / 'datasets/oxford_pet/oxford-iiit-pet'
+    test_file = data_dir / 'annotations/test.txt'
+    if not test_file.exists():
+        return
+    runs = ['unet_ce', 'unet_dice', 'unet_ce_dice']
+    if not all((ROOT / f'results/task3/{run}/visualizations/sample_0_gt_pred.png').exists() for run in runs):
+        return
+
+    names = [line.split()[0] for line in test_file.read_text(encoding='utf-8').splitlines()[:4]]
+    colors = np.array([[0, 0, 0], [80, 180, 80], [230, 210, 60]], dtype=np.uint8)
+    font = ImageFont.load_default()
+
+    def colorize_mask(path: Path) -> Image.Image:
+        arr = np.asarray(Image.open(path).convert('L').resize((192, 192), Image.Resampling.NEAREST), dtype=np.int64) - 1
+        arr = np.clip(arr, 0, 2)
+        return Image.fromarray(colors[arr], 'RGB')
+
+    def pred_half(run: str, idx: int) -> Image.Image:
+        im = Image.open(ROOT / f'results/task3/{run}/visualizations/sample_{idx}_gt_pred.png').convert('RGB')
+        w, h = im.size
+        return im.crop((w // 2, 0, w, h)).resize((192, 192))
+
+    cols = ['Input', 'Ground Truth', 'CE', 'Dice', 'CE+Dice']
+    cell, top, left, gap, row_h = 192, 42, 18, 10, 232
+    canvas = Image.new('RGB', (left * 2 + 5 * cell + 4 * gap, top + len(names) * row_h + 18), (255, 255, 255))
+    d = ImageDraw.Draw(canvas)
+    for c, title in enumerate(cols):
+        d.text((left + c * (cell + gap) + 6, 14), title, fill=(0, 0, 0), font=font)
+    for i, name in enumerate(names):
+        y = top + i * row_h
+        image = Image.open(data_dir / f'images/{name}.jpg').convert('RGB')
+        image.thumbnail((cell, cell))
+        bg = Image.new('RGB', (cell, cell), (245, 245, 245))
+        bg.paste(image, ((cell - image.width) // 2, (cell - image.height) // 2))
+        panels = [
+            bg,
+            colorize_mask(data_dir / f'annotations/trimaps/{name}.png'),
+            pred_half('unet_ce', i),
+            pred_half('unet_dice', i),
+            pred_half('unet_ce_dice', i),
+        ]
+        for c, panel in enumerate(panels):
+            x = left + c * (cell + gap)
+            canvas.paste(panel, (x, y))
+            d.rectangle([x, y, x + cell, y + cell], outline=(210, 210, 210))
+        d.text((left, y + cell + 8), name, fill=(50, 50, 50), font=font)
+    canvas.save(ASSETS / 'task3_segmentation_comparison.png')
+
+
 def summarize() -> None:
     def load_json(path: str):
         return json.loads((ROOT / path).read_text(encoding='utf-8'))
@@ -139,6 +259,9 @@ def copy_yolo_assets() -> None:
 
 
 extract_tracking_frames()
+make_counting_line_example()
+make_id_switch_assets()
+make_task3_segmentation_comparison()
 summarize()
 copy_yolo_assets()
 print('tracking frames and supplementary assets generated')
