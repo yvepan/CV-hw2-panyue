@@ -19,6 +19,7 @@ report/final_report.md
 
 - GitHub 仓库：<https://github.com/yvepan/CV-hw2-panyue>
 - 模型权重下载：<https://drive.google.com/file/d/19YITjP_QeCgeC1rVTKM4qRmJJ8zOlmK4/view?usp=drive_link>
+- yolo视频下载:<https://drive.google.com/file/d/1rY5mVFjTLAHQpZV0bY9_RC8W98zF26LP/view?usp=drive_link>
 
 ## 目录结构
 
